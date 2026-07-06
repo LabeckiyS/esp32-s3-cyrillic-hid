@@ -1,6 +1,23 @@
 # Changelog
 
-## Reconstruction — multi-board ESP32-S3 (current)
+## All three boards hardware-verified (current)
+
+- **Fixed** LilyGo T-Dongle S3 screen (was completely black on real hardware): the
+  backlight pin is active-low (`digitalWrite(TFT_BL, LOW)` turns it on — the code had
+  it inverted), and the ST7735 init needs `INITR_MINI160x80_PLUGIN` instead of plain
+  `INITR_MINI160x80` (the plain variant forces the wrong RGB color order, a 2px offset,
+  and no baked-in inversion). Confirmed against LilyGo's own factory TFT_eSPI example
+  and official `Setup209_LilyGo_T_Dongle_S3.h` config.
+- **Changed** board-specific code (pins, display init/render) moved out of the shared
+  `.ino` into `firmware/keyboard-dongle/boards/<board>.h`, one header per board, so a
+  change to one board's screen can't affect another's.
+- **Changed** CI (`build-firmware.yml`) now rebuilds only the board(s) whose files
+  changed (via `dorny/paths-filter`) instead of all three on every push.
+- **Status:** all three boards (LilyGo T-Dongle S3, Waveshare ESP32-S3-Geek, M5Stack
+  AtomS3U) are hardware-verified — USB keyboard, USB mouse, WiFi AP, and BLE control
+  all confirmed working. Project is functionally complete.
+
+## Reconstruction — multi-board ESP32-S3
 
 The project was reorganized around **three ESP32-S3 boards**, sharing one firmware.
 

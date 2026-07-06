@@ -24,16 +24,14 @@ One firmware (`firmware/keyboard-dongle`) targets all three — pick yours with 
 
 ### Verification status
 
-All three share one firmware, but only the Geek has been run on real hardware so far:
+All three boards are hardware-verified — USB keyboard, USB mouse, screen (where
+present), button WiFi↔BLE toggle, and WiFi + BLE control all confirmed working:
 
-| Board | Status | Verified on hardware |
-|-------|--------|----------------------|
-| **Waveshare ESP32-S3-Geek** | ✅ **Hardware-tested** | USB keyboard, USB mouse, screen, button WiFi↔BLE toggle, and WiFi + BLE control all confirmed working. |
-| **LilyGo T-Dongle S3** | ⚠️ **Compile-only** | Builds clean; same firmware. ST7735 pins/init are the documented ones but **not yet verified on the panel**. |
-| **M5Stack AtomS3U** | ⚠️ **Compile-only** | Builds clean; same firmware. No screen (fixed pass `type12345`); button pin (GPIO41) **unverified**. |
-
-On the untested boards, USB-HID + WiFi + BLE should work (they're chip-level, proven on
-the Geek); the screen/button wiring is what may need a small per-board tweak.
+| Board | Status |
+|-------|--------|
+| **Waveshare ESP32-S3-Geek** | ✅ **Hardware-verified** |
+| **LilyGo T-Dongle S3** | ✅ **Hardware-verified** |
+| **M5Stack AtomS3U** | ✅ **Hardware-verified** (no screen; fixed pass `type12345`) |
 
 ## Quick start (one-click flasher, no toolchain)
 
@@ -105,10 +103,12 @@ local/offline builds (it always builds all three).
 - **BLE pairing/security is OFF by default** (`REQUIRE_BLE_PAIRING 0`) for reliable first
   boot. Set `1` (needs a screen) for an on-screen pairing PIN — less tested.
 - **US keyboard layout** is assumed on the target for symbols.
-- **Screens:** the Geek (ST7789) is hardware-verified. If another board's screen is
-  blank/garbled, tweak the `#if USE_ST77xx` block in `setup()` (rotation/invert/offset);
-  ST7789 needs the **software-SPI constructor** (hardware-SPI re-init lands on the wrong
-  pins → blank). USB-HID + WiFi + BLE work regardless of the screen.
+- **Screens:** all hardware-verified. Per-board display code lives in
+  `firmware/keyboard-dongle/boards/<board>.h`. Geek's ST7789 needs the
+  **software-SPI constructor** (hardware-SPI re-init lands on the wrong pins → blank).
+  LilyGo's ST7735 needs `INITR_MINI160x80_PLUGIN` (not plain `INITR_MINI160x80`) for
+  the correct BGR color order/offset/inversion, and its backlight pin is
+  **active-low** (`LOW` = on) — both confirmed against LilyGo's own factory example.
 - **Flashing an S3:** while the firmware is running it won't auto-reset into the
   bootloader over native USB — **hold BOOT while plugging in** to force download mode,
   then flash. (The running app also re-enumerates to a different COM port than the bootloader.)
