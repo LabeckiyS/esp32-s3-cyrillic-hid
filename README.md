@@ -69,16 +69,20 @@ arduino-cli compile \
 > `FlashSize=8M` + `PartitionScheme=default_8MB`. `collect-bins.ps1` does this
 > automatically per board.
 
-**CI:** a GitHub Action (`.github/workflows/build-firmware.yml`) rebuilds all three
-boards and commits the refreshed `web/<board>/` bins on any push that touches
-`firmware/`. So a normal `git push` keeps the hosted flasher in sync — `collect-bins.ps1`
-stays for local/offline builds.
+**CI:** a GitHub Action (`.github/workflows/build-firmware.yml`) rebuilds **only the
+board(s) that changed** and commits the refreshed `web/<board>/` bins:
+- edit `boards/geek.h` → builds **just the Geek**
+- edit the shared `keyboard-dongle.ino` → builds **all** (it affects every board)
+
+So a normal `git push` keeps the hosted flasher in sync — `collect-bins.ps1` stays for
+local/offline builds (it always builds all three).
 
 ## Files
 
 | Path | What |
 |------|------|
-| `firmware/keyboard-dongle/` | The one firmware, board-selectable via `BOARD`. |
+| `firmware/keyboard-dongle/keyboard-dongle.ino` | Shared logic (keyboard, mouse, BLE, WiFi, web). |
+| `firmware/keyboard-dongle/boards/<board>.h` | Each board's **isolated** hardware: pins, screen driver, button. Edit one without touching the others. |
 | `web/index.html` | Hosted page: flash any board + drive it over BLE. |
 | `web/control.html` | Standalone BLE keyboard control page. |
 | `web/<board>/` + `web/manifest-*.json` | Pre-built bins per board for the flasher. |

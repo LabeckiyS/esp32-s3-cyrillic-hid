@@ -1,22 +1,18 @@
 /*
- * ESP32-S3 USB-HID keyboard dongle — ONE firmware, THREE boards.
+ * ESP32-S3 USB-HID keyboard + mouse dongle — shared logic for all boards.
  *
- * Plug into the TARGET computer; it enumerates as a real USB keyboard. At boot it
- * brings up a BLE (Nordic UART) service AND a WiFi access point. Send text from a
- * control machine over whichever is convenient:
- *   - WiFi : join the AP, open http://192.168.4.1
- *   - BLE  : use web/control.html (Web Bluetooth)
- * Whichever transport connects first disables the other until it disconnects.
+ * Plug into the TARGET computer; it enumerates as a real USB keyboard + mouse. At
+ * boot it serves a WiFi access point (http://192.168.4.1); the button toggles to a
+ * BLE control service (web/control.html). Text/keys/mouse arrive over whichever
+ * radio is active.
  *
- * Pick your board below (or pass -DBOARD=n to arduino-cli). The ONLY thing that
- * differs between boards is the on-board screen; USB-HID + WiFi + BLE are identical.
+ * ALL board-specific hardware (pins, screen driver, display) lives in boards/<board>.h,
+ * so a change to one board can't affect another. Select the board with -DBOARD=n
+ * (1 LilyGo, 2 Geek, 3 AtomS3U) or the #define below.
  *
- * Board options (all are ESP32-S3, which is what makes USB-HID possible):
- *   USB CDC On Boot : Enabled
- *   USB Mode        : USB-OTG (TinyUSB)
- *   Partition Scheme: 16M Flash (3MB APP/9.9MB FATFS)
- *   Flash Size      : 16MB
- * Libraries: Adafruit GFX, Adafruit ST7735 and ST7789.
+ * Board options: USB CDC On Boot Enabled, USB Mode USB-OTG (TinyUSB),
+ *   Partition 16M (3MB APP) [AtomS3U: 8M], Flash 16MB [AtomS3U: 8MB].
+ * Libraries: Adafruit GFX, Adafruit ST7735 and ST7789 (pulled in by the board header).
  */
 
 #include "USB.h"
@@ -29,66 +25,36 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <BLESecurity.h>
-#include <SPI.h>
 #include <esp_mac.h>
 #include <esp_random.h>
 
 // ===================== BOARD SELECT =====================
-#define BOARD_LILYGO_TDONGLE_S3 1   // ST7735 80x160 LCD, USB-A plug
-#define BOARD_WAVESHARE_S3_GEEK 2   // ST7789 240x135 LCD, USB-A plug
-#define BOARD_M5STACK_ATOMS3U   3   // no screen (RGB LED), USB-A plug
+#define BOARD_LILYGO_TDONGLE_S3 1
+#define BOARD_WAVESHARE_S3_GEEK 2
+#define BOARD_M5STACK_ATOMS3U   3
 #ifndef BOARD
-#define BOARD BOARD_WAVESHARE_S3_GEEK   // <-- change to your board, or pass -DBOARD=n
+#define BOARD BOARD_WAVESHARE_S3_GEEK   // default; CI/arduino-cli pass -DBOARD=n
 #endif
-
-// 0 = open BLE control (reliable first boot, recommended until tested on hardware)
-// 1 = require an on-screen pairing PIN (needs a display + bonding)
-#define REQUIRE_BLE_PAIRING 0
-
-// ----- per-board wiring -----
-#if BOARD == BOARD_LILYGO_TDONGLE_S3
-  #define HAS_DISPLAY 1
-  #define USE_ST7735  1
-  #define TFT_CS 4
-  #define TFT_DC 2
-  #define TFT_RST 1
-  #define TFT_MOSI 3
-  #define TFT_SCLK 5
-  #define TFT_BL 38
-  #define BTN_PIN 0
-  #define TXT_SIZE 1
-  #define BOARD_NAME "LilyGo T-Dongle S3"
+#if   BOARD == BOARD_LILYGO_TDONGLE_S3
+  #include "boards/lilygo.h"
 #elif BOARD == BOARD_WAVESHARE_S3_GEEK
-  #define HAS_DISPLAY 1
-  #define USE_ST7789  1
-  // pins per esp-cpp/espp ws-s3-geek driver (authoritative)
-  #define TFT_CS 10
-  #define TFT_DC 8
-  #define TFT_RST 9
-  #define TFT_MOSI 11
-  #define TFT_SCLK 12
-  #define TFT_BL 7
-  #define BTN_PIN 0
-  #define TXT_SIZE 2
-  #define BOARD_NAME "Waveshare ESP32-S3-Geek"
+  #include "boards/geek.h"
 #elif BOARD == BOARD_M5STACK_ATOMS3U
-  #define HAS_DISPLAY 0
-  #define BTN_PIN 41
-  #define BOARD_NAME "M5Stack AtomS3U"
+  #include "boards/atoms3u.h"
 #else
   #error "Unknown BOARD"
 #endif
 
+// 0 = open BLE control (reliable); 1 = require an on-screen pairing PIN (needs a display)
+#define REQUIRE_BLE_PAIRING 0
 #if REQUIRE_BLE_PAIRING && !HAS_DISPLAY
   #error "REQUIRE_BLE_PAIRING needs a display to show the PIN; this board has none."
 #endif
 
-#include <Adafruit_GFX.h>
-#if USE_ST7735
-  #include <Adafruit_ST7735.h>
-#elif USE_ST7789
-  #include <Adafruit_ST7789.h>
-#endif
+// RGB565 title colours (so shared code needs no display library)
+#define DC_CYAN    0x07FF
+#define DC_GREEN   0x07E0
+#define DC_MAGENTA 0xF81F
 
 // ---- Nordic UART Service UUIDs (match web/control.html) ----
 #define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -98,21 +64,13 @@
 USBHIDKeyboard Keyboard;
 USBHIDMouse Mouse;
 WebServer server(80);
-// Software-SPI constructors (exact pins) — avoids Adafruit re-begin()'ing hardware
-// SPI on the wrong default pins, which leaves the panel blank.
-#if USE_ST7735
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
-#elif USE_ST7789
-Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
-#endif
 BLEAdvertising *advertising = nullptr;
 
 String apSsid, apPass;
 volatile uint32_t g_pairPin = 0;
 volatile bool g_showPin = false;
 volatile bool needRedraw = false;
-// Button (BTN_PIN) toggles which radio is live: 0 = WiFi AP, 1 = BLE. Exclusive.
-int radioMode = 0;
+int radioMode = 0;            // 0 = WiFi AP, 1 = BLE (button toggles)
 volatile bool bleConnected = false;
 volatile int wifiClients = 0;
 bool wifiApUp = false;
@@ -183,10 +141,7 @@ void doKey(const String &k) {
   }
 }
 
-// Mouse command bytes (all non-zero so they survive String handling):
-//   0x02 'm' dx+128 dy+128   -> relative move
-//   0x02 'c' button(1=L,2=R,4=M) -> click
-//   0x02 's' amount+128      -> scroll wheel
+// Mouse command bytes (all non-zero): 0x02 'm' dx+128 dy+128 | 'c' btn | 's' amt+128
 void doMouse(const uint8_t *d, size_t n) {
   if (n < 2) return;
   if (d[1] == 'm' && n >= 4)      Mouse.move((int)d[2] - 128, (int)d[3] - 128, 0);
@@ -194,34 +149,18 @@ void doMouse(const uint8_t *d, size_t n) {
   else if (d[1] == 's' && n >= 3) Mouse.move(0, 0, (int)d[2] - 128);
 }
 
-#if HAS_DISPLAY
-void screen(const String &l1, uint16_t c1, const String &l2, const String &l3, const String &l4) {
-  tft.fillScreen(ST77XX_BLACK);
-  tft.setTextSize(TXT_SIZE);
-  const int lh = 8 * TXT_SIZE + 4;   // line height scales with text size
-  int y = 4;
-  tft.setTextColor(c1);            tft.setCursor(3, y); tft.print(l1); y += lh + 4;
-  tft.setTextColor(ST77XX_WHITE);
-  tft.setCursor(3, y); tft.print(l2); y += lh;
-  tft.setCursor(3, y); tft.print(l3); y += lh;
-  tft.setCursor(3, y); tft.print(l4);
-}
+// shared screen content -> board renders it (boardRenderScreen lives in boards/<board>.h)
 void drawScreen() {
   if (g_showPin) {
     char pin[8]; snprintf(pin, sizeof(pin), "%06u", (unsigned)g_pairPin);
-    screen("BLE PAIRING", ST77XX_MAGENTA, "Enter PIN:", String(pin), "");
-    return;
-  }
-  if (radioMode == 0) {   // WiFi active
-    screen("WiFi MODE", ST77XX_CYAN, "SSID: " + apSsid, "Pass: " + apPass, "192.168.4.1");
-  } else {                // BLE active
-    screen("BLE MODE", ST77XX_GREEN, "name: " + apSsid,
-           bleConnected ? "connected" : "advertising", "(press btn=WiFi)");
+    boardRenderScreen("BLE PAIRING", DC_MAGENTA, "Enter PIN:", String(pin), "");
+  } else if (radioMode == 0) {
+    boardRenderScreen("WiFi MODE", DC_CYAN, "SSID: " + apSsid, "Pass: " + apPass, "192.168.4.1");
+  } else {
+    boardRenderScreen("BLE MODE", DC_GREEN, "name: " + apSsid,
+                      bleConnected ? "connected" : "advertising", "(btn=WiFi)");
   }
 }
-#else
-void drawScreen() {}   // screenless board: nothing to draw
-#endif
 
 void genCreds() {
   uint8_t mac[6];
@@ -230,13 +169,13 @@ void genCreds() {
   snprintf(ss, sizeof(ss), "Keeb-%02X%02X", mac[4], mac[5]);
   apSsid = ss;
 #if defined(FIXED_PASS)
-  apPass = "type12345";   // fixed (e.g. while a screen is unavailable/being debugged)
+  apPass = "type12345";
 #elif HAS_DISPLAY
   static const char cs[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";  // all caps + digits, no I/O/0/1
   apPass = "";
-  for (int i = 0; i < 8; i++) apPass += cs[esp_random() % (sizeof(cs) - 1)];  // random, shown on screen
+  for (int i = 0; i < 8; i++) apPass += cs[esp_random() % (sizeof(cs) - 1)];
 #else
-  apPass = "type12345";   // fixed: no screen to display a random one
+  apPass = "type12345";   // no screen to show a random one
 #endif
   Serial.printf("[%s] WiFi: %s / %s  ->  http://192.168.4.1\n", BOARD_NAME, apSsid.c_str(), apPass.c_str());
 }
@@ -282,23 +221,16 @@ class SecCb : public BLESecurityCallbacks {
 };
 #endif
 
-// Apply the current radioMode: bring up exactly one radio, shut the other.
 void applyRadio() {
-  if (radioMode == 0) {            // WiFi
-    stopAdv();
-    if (!wifiApUp) startAP();
-  } else {                         // BLE
-    stopAP();
-    startAdv();
-  }
+  if (radioMode == 0) { stopAdv(); if (!wifiApUp) startAP(); }
+  else                { stopAP();  startAdv(); }
   needRedraw = true;
 }
-// Poll the button; a press toggles WiFi <-> BLE.
 void pollButton() {
   static bool last = HIGH;
   static uint32_t t = 0;
   bool b = digitalRead(BTN_PIN);
-  if (b != last && millis() - t > 60) {   // debounce
+  if (b != last && millis() - t > 60) {
     t = millis(); last = b;
     if (b == LOW) { radioMode = !radioMode; applyRadio(); }
   }
@@ -310,26 +242,12 @@ void setup() {
   Mouse.begin();
   USB.begin();
 
-#if HAS_DISPLAY
-  pinMode(TFT_BL, OUTPUT);
-  digitalWrite(TFT_BL, HIGH);
-  #if USE_ST7735
-    tft.initR(INITR_MINI160x80);       // 80x160 panel
-    tft.setRotation(3);
-    tft.invertDisplay(true);
-  #elif USE_ST7789
-    tft.init(135, 240);                 // 1.14" 240x135 panel
-    tft.setRotation(3);
-    // if colours look inverted on hardware, toggle: tft.invertDisplay(false);
-  #endif
-  tft.fillScreen(ST77XX_BLACK);
-#endif
-
+  boardInitDisplay();
   genCreds();
 
-  pinMode(BTN_PIN, INPUT_PULLUP);   // button toggles WiFi <-> BLE
+  pinMode(BTN_PIN, INPUT_PULLUP);
   WiFi.onEvent(onWiFiEvent);
-  startAP();                        // bring WiFi up before BLE init (coexistence order)
+  startAP();                        // WiFi up before BLE init (coexistence order)
 
   BLEDevice::init(apSsid.c_str());
   BLEServer *srv = BLEDevice::createServer();
@@ -348,7 +266,6 @@ void setup() {
   advertising = BLEDevice::getAdvertising();
   advertising->addServiceUUID(SERVICE_UUID);
   advertising->setScanResponse(true);
-  // advertising started by applyRadio() per the selected mode
 
 #if REQUIRE_BLE_PAIRING
   BLEDevice::setSecurityCallbacks(new SecCb());
@@ -365,7 +282,7 @@ void setup() {
   server.on("/mouse", HTTP_POST, []() { String b = server.arg("plain"); doMouse((const uint8_t *)b.c_str(), b.length()); server.send(200, "text/plain", "ok"); });
   server.begin();
 
-  radioMode = 0;       // start in WiFi mode
+  radioMode = 0;
   applyRadio();
   drawScreen();
 }
@@ -375,7 +292,7 @@ void loop() {
   pollButton();
   if (needRedraw) { needRedraw = false; drawScreen(); }
   static uint32_t t = 0;
-  if (millis() - t > 5000) {  // periodic status over serial
+  if (millis() - t > 5000) {
     t = millis();
     Serial.printf("[%s] mode=%s WiFi: %s / %s\n", BOARD_NAME,
                   radioMode == 0 ? "WiFi" : "BLE", apSsid.c_str(), apPass.c_str());
