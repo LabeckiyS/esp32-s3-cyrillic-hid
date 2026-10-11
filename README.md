@@ -35,7 +35,7 @@ present), button WiFi↔BLE toggle, and WiFi + BLE control all confirmed working
 
 ## Quick start (one-click flasher, no toolchain)
 
-1. In **Chrome/Edge**, open **https://kolec94.github.io/tdongle-s3-hid/web/**
+1. In **Chrome/Edge**, open **https://kolec94.github.io/esp32-s3-hid-dongle/web/**
 2. Pick your board, hold the board's **BOOT** button, plug it in, click **Install**.
 3. Plug it into the **target** computer. With a screen, it shows the WiFi
    name/password; screenless boards use a fixed password (below).
