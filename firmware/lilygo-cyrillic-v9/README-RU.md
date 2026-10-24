@@ -38,6 +38,5 @@ https://kolec94.github.io/esp32-s3-hid-dongle/web/control.html
 4. Нажмите `Upload` (стрелка вправо).
 5. После `SUCCESS` переподключите донгл без кнопки.
 
-Исходное изображение и уменьшенная версия находятся в `assets`. Заголовок
-`boards/cyber_star_v8_splash.h` создаётся скриптом `tools_make_splash.py`.
-Старая хакерская заставка из v5 также оставлена в `assets` как резервная.
+Готовая заставка включена в
+`boards/cyber_star_v8_splash.h` в формате RGB565 80×160.
