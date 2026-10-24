@@ -51,3 +51,17 @@ The project was reorganized around **three ESP32-S3 boards**, sharing one firmwa
   arduino-esp32 3.3.10 (and NimBLE-Arduino won't link against the C5 core).
 - Decision: keep the C5 as a dual-band WiFi analyzer; get **ESP32-S3** hardware for the
   real wired-USB keyboard. Three S3 boards were ordered, hence this multi-board layout.
+# Cyrillic fork
+
+## v1.0.0 — firmware v9 (2026-10-24)
+
+- Added Russian UTF-8 to physical Windows ЙЦУКЕН mapping.
+- Added reliable HID key-down/key-up timing (8 ms + 8 ms) to stop dropped letters.
+- Set BLE and Wi-Fi name to `Клавиатура` and fallback Wi-Fi password to `12345678`.
+- Added a vertical 80×160 cyber splash shown for 4 seconds.
+- Added portrait status screens and immediate BLE connection/disconnection redraw.
+- Restart BLE advertising automatically after disconnect.
+- Made the Web UI Win/Cmd action send `Win+Space`.
+
+---
+
