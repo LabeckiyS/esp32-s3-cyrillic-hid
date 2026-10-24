@@ -55,7 +55,7 @@
 | `firmware/lilygo-cyrillic-v9/` | Проверенная русская прошивка PlatformIO |
 | `firmware/lilygo-cyrillic-v9/keyboard-dongle.ino` | BLE/Wi-Fi, UTF-8 → ЙЦУКЕН, USB HID |
 | `firmware/lilygo-cyrillic-v9/boards/lilygo.h` | Экран, пины и ориентация LILYGO |
-| `firmware/lilygo-cyrillic-v9/assets/` | Исходники и уменьшенная заставка |
+| `firmware/lilygo-cyrillic-v9/boards/cyber_star_v8_splash.h` | Готовая заставка 80×160 в RGB565 |
 | `firmware/keyboard-dongle/` | Исходная многоплатная версия upstream |
 
 ### Происхождение проекта
