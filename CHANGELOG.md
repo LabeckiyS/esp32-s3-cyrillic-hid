@@ -53,6 +53,15 @@ The project was reorganized around **three ESP32-S3 boards**, sharing one firmwa
   real wired-USB keyboard. Three S3 boards were ordered, hence this multi-board layout.
 # Cyrillic fork
 
+## v11.0.0 — firmware v11 (2026-11-04)
+
+- Replaced the unreliable Android system BLE passkey flow from v10 with an explicit
+  six-digit application PIN shown on the dongle and entered on the control page.
+- Rejects all keyboard and mouse commands until the current BLE connection is unlocked.
+- Added BLE notifications for `AUTH_OK`, `AUTH_DENIED` and `LOCKED` states.
+- Added a visible PIN input and unlock status to the Russian control page.
+- Preserved the Russian UTF-8 mapping, HID timing, Wi-Fi fallback and 4-second splash.
+
 ## v10.0.0 — firmware v10 (2026-11-04)
 
 - Added the repository's own Russian Web Bluetooth control page.

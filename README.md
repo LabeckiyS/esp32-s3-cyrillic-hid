@@ -8,7 +8,7 @@
 
 Главное отличие этой версии — корректная обработка русского UTF-8 и преобразование кириллицы в физические клавиши раскладки **ЙЦУКЕН**.
 
-### Возможности firmware v10
+### Возможности firmware v11
 
 - русский UTF-8: строчные и заглавные буквы, `ё` и основные знаки препинания;
 - стабильная печать без потери символов: отдельные HID-нажатия и отпускания по 8 мс;
@@ -21,7 +21,8 @@
 - отображение состояния BLE/Wi-Fi и повторный запуск BLE-рекламы после отключения;
 - кнопка `Win/Cmd` отправляет `Win+Space` для смены раскладки Windows.
 - собственная русская BLE-панель в этом репозитории;
-- защищённое BLE-сопряжение с PIN на экране;
+- прикладная блокировка команд с шестизначным PIN на экране и явным полем ввода в веб-панели;
+- надёжное подключение Android Chrome без проблемного системного диалога BLE-сопряжения v10;
 - Backspace/Delete с удержанием, копирование, вставка, вырезание и отмена;
 - контекстное меню (`Shift+F10`) и свойства (`Alt+Enter`);
 - правый клик отдельной кнопкой и удержанием на сенсорной площадке.
@@ -42,7 +43,7 @@
 ### Сборка в VS Code + PlatformIO
 
 1. Скачайте репозиторий.
-2. Откройте папку `firmware/lilygo-cyrillic-v10` в VS Code.
+2. Откройте папку `firmware/lilygo-cyrillic-v11` в VS Code.
 3. Установите расширение PlatformIO.
 4. Нажмите **Build** (галочка).
 5. Отключите донгл, зажмите боковую кнопку, вставьте его в USB и отпустите через 2–3 секунды.
@@ -61,10 +62,10 @@
 
 | Путь | Назначение |
 |---|---|
-| `firmware/lilygo-cyrillic-v10/` | Актуальная русская прошивка PlatformIO |
-| `firmware/lilygo-cyrillic-v10/keyboard-dongle.ino` | BLE/Wi-Fi, UTF-8 → ЙЦУКЕН, USB HID |
-| `firmware/lilygo-cyrillic-v10/boards/lilygo.h` | Экран, пины и ориентация LILYGO |
-| `firmware/lilygo-cyrillic-v10/boards/cyber_star_v8_splash.h` | Готовая заставка 80×160 в RGB565 |
+| `firmware/lilygo-cyrillic-v11/` | Актуальная русская прошивка PlatformIO |
+| `firmware/lilygo-cyrillic-v11/keyboard-dongle.ino` | BLE/Wi-Fi, PIN, UTF-8 → ЙЦУКЕН, USB HID |
+| `firmware/lilygo-cyrillic-v11/boards/lilygo.h` | Экран, пины и ориентация LILYGO |
+| `firmware/lilygo-cyrillic-v11/boards/cyber_star_v8_splash.h` | Готовая заставка 80×160 в RGB565 |
 | `web/control.html` | Собственная русская панель Web Bluetooth |
 | `firmware/keyboard-dongle/` | Исходная многоплатная версия upstream |
 
@@ -82,6 +83,6 @@ This fork turns a **LILYGO T-Dongle-S3 V1.1** into a USB HID keyboard and mouse 
 
 The firmware was hardware-tested with a Samsung Galaxy S25 Ultra, Chrome, Windows, the onboard ST7735 80×160 display, and the LILYGO T-Dongle-S3 V1.1.
 
-Open `firmware/lilygo-cyrillic-v10` in VS Code with PlatformIO to build and upload it. The target computer must already have the matching Russian or English keyboard layout selected.
+Open `firmware/lilygo-cyrillic-v11` in VS Code with PlatformIO to build and upload it. The target computer must already have the matching Russian or English keyboard layout selected.
 
 Use this device only on computers you own or are explicitly authorized to control.

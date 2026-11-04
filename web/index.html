@@ -27,7 +27,13 @@
   <p class="hint">Hold the board's <b>BOOT</b> button, plug it into <em>this</em> computer, then click Install. Chrome/Edge only.</p>
 
   <div class="board" style="border-color:#2563eb">
-    <b>LILYGO T-Dongle-S3 — Клавиатура v10</b><div class="meta">Русский UTF-8 · защищённое BLE-сопряжение · экран 80×160</div>
+    <b>LILYGO T-Dongle-S3 — Клавиатура v11</b><div class="meta">Русский UTF-8 · PIN в веб-панели · исправлено подключение Android · экран 80×160</div>
+    <esp-web-install-button manifest="./manifest-lilygo-v11.json"><button slot="activate">Установить v11</button>
+      <span slot="unsupported">Используйте Chrome или Edge на компьютере.</span><span slot="not-allowed">Откройте страницу по HTTPS.</span></esp-web-install-button>
+  </div>
+
+  <div class="board">
+    <b>LILYGO T-Dongle-S3 — Клавиатура v10 (предыдущая)</b><div class="meta">Предыдущая версия с системным BLE-сопряжением</div>
     <esp-web-install-button manifest="./manifest-lilygo-v10.json"><button slot="activate">Установить v10</button>
       <span slot="unsupported">Используйте Chrome или Edge на компьютере.</span><span slot="not-allowed">Откройте страницу по HTTPS.</span></esp-web-install-button>
   </div>
@@ -50,60 +56,11 @@
 
   <hr>
 
-  <h2>2 · Use it as a keyboard</h2>
-  <p class="hint">Plug the flashed board into the <em>target</em> computer. Connect over BLE below, or join its WiFi and open <code>http://192.168.4.1</code>.</p>
-  <p class="hint">Prefer a dedicated keyboard page? <a href="./control.html">Open the standalone control page →</a></p>
-  <div class="row">
-    <button id="conn" onclick="connect()">Connect to dongle</button>
-    <span id="status">disconnected</span>
-  </div>
-  <textarea id="txt" placeholder="Type text to send to the target computer..."></textarea>
-  <div class="row">
-    <button id="send" onclick="send()" disabled>Send</button>
-    <label><input type="checkbox" id="enter" checked> Press Enter after</label>
-  </div>
-  <div class="row">
-    <button class="alt keybtn" onclick="cmd('ENTER')" disabled>Enter</button>
-    <button class="alt keybtn" onclick="cmd('TAB')" disabled>Tab</button>
-    <button class="alt keybtn" onclick="cmd('ESC')" disabled>Esc</button>
-    <button class="alt keybtn" onclick="cmd('WIN')" disabled>Win/Cmd</button>
-    <button class="alt keybtn" onclick="cmd('CTRL_ALT_DEL')" disabled>Ctrl+Alt+Del</button>
-  </div>
-  <div id="log"></div>
+  <h2>2 · Управление клавиатурой</h2>
+  <p class="hint">Вставьте прошитый донгл в целевой компьютер. В панели подключите устройство, затем введите шестизначный PIN с его экрана.</p>
+  <p><a href="./control.html"><button>Открыть панель Клавиатура v11</button></a></p>
+  <p class="hint">Резервный вариант: переключите донгл кнопкой в режим Wi-Fi, подключитесь к сети <code>Клавиатура</code> с паролем <code>12345678</code> и откройте <code>http://192.168.4.1</code>.</p>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-<script>
-const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const RX='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-let rxChar=null;
-function setConnected(on){
-  document.getElementById('status').textContent=on?'connected ✓':'disconnected';
-  document.getElementById('send').disabled=!on;
-  document.querySelectorAll('.keybtn').forEach(b=>b.disabled=!on);
-}
-function log(m){document.getElementById('log').textContent=m;}
-async function connect(){
-  if(!navigator.bluetooth){log('Web Bluetooth not supported — use Chrome/Edge.');return;}
-  try{
-    const dev=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE]}]});
-    dev.addEventListener('gattserverdisconnected',()=>{setConnected(false);rxChar=null;});
-    const server=await dev.gatt.connect();
-    const svc=await server.getPrimaryService(SERVICE);
-    rxChar=await svc.getCharacteristic(RX);
-    setConnected(true);log('connected to '+(dev.name||'device'));
-  }catch(e){log('connect failed: '+e.message);}
-}
-async function writeChunked(bytes){for(let i=0;i<bytes.length;i+=180){await rxChar.writeValue(bytes.slice(i,i+180));}}
-async function send(){
-  if(!rxChar)return;
-  let t=document.getElementById('txt').value;
-  if(document.getElementById('enter').checked)t+='\n';
-  try{await writeChunked(new TextEncoder().encode(t));log('sent ✓');}catch(e){log('send failed: '+e.message);}
-}
-async function cmd(name){
-  if(!rxChar)return;
-  try{await rxChar.writeValue(new TextEncoder().encode('\x01'+name));log('sent '+name);}catch(e){log('send failed: '+e.message);}
-}
-</script>
 </body>
 </html>
