@@ -25,7 +25,7 @@
   <p class="hint">A plug-in USB keyboard you drive over WiFi or Bluetooth. Works on three ESP32-S3 boards.</p>
 
   <h2>1 · Install firmware (pick your board)</h2>
-  <div class="warning"><b>Для LILYGO T-Dongle-S3:</b> отключите донгл, зажмите боковую кнопку BOOT и вставьте его в USB. Не отпуская BOOT, нажмите «Установить v11» и выберите порт <b>USB JTAG/serial debug unit</b>. Отпустите кнопку только после появления прогресса стирания или записи.</div>
+  <div class="warning"><b>Для LILYGO T-Dongle-S3:</b> отключите донгл, зажмите боковую кнопку BOOT и вставьте его в USB. Когда появится серый экран, отпустите BOOT. Затем нажмите «Установить v11» и выберите порт <b>USB JTAG/serial debug unit</b>.</div>
   <p class="hint">Chrome/Edge на компьютере. Закройте Arduino IDE, PlatformIO и другие программы, которые могут занимать COM-порт.</p>
 
   <div class="board" style="border-color:#2563eb">
@@ -63,6 +63,6 @@
   <p><a href="./control.html"><button>Открыть панель Клавиатура v11</button></a></p>
   <p class="hint">Резервный вариант: переключите донгл кнопкой в режим Wi-Fi, подключитесь к сети <code>Клавиатура</code> с паролем <code>12345678</code> и откройте <code>http://192.168.4.1</code>.</p>
 
-<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<script type="module" src="./vendor/esp-web-tools-no-reset/install-button.js"></script>
 </body>
 </html>
