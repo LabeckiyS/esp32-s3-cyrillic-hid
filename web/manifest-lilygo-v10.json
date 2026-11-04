@@ -1,0 +1,16 @@
+{
+  "name": "LILYGO T-Dongle-S3 — Клавиатура v10",
+  "version": "10.0.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "lilygo-v10/bootloader.bin", "offset": 0 },
+        { "path": "lilygo-v10/partitions.bin", "offset": 32768 },
+        { "path": "lilygo-v10/boot_app0.bin",  "offset": 57344 },
+        { "path": "lilygo-v10/firmware.bin",   "offset": 65536 }
+      ]
+    }
+  ]
+}

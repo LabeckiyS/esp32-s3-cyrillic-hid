@@ -53,6 +53,10 @@
 
 <https://labeckiys.github.io/esp32-s3-cyrillic-hid/>
 
+Веб-установщик прошивки:
+
+<https://labeckiys.github.io/esp32-s3-cyrillic-hid/web/index.html>
+
 ### Структура
 
 | Путь | Назначение |

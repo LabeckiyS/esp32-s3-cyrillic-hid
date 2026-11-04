@@ -26,6 +26,12 @@
   <h2>1 · Install firmware (pick your board)</h2>
   <p class="hint">Hold the board's <b>BOOT</b> button, plug it into <em>this</em> computer, then click Install. Chrome/Edge only.</p>
 
+  <div class="board" style="border-color:#2563eb">
+    <b>LILYGO T-Dongle-S3 — Клавиатура v10</b><div class="meta">Русский UTF-8 · защищённое BLE-сопряжение · экран 80×160</div>
+    <esp-web-install-button manifest="./manifest-lilygo-v10.json"><button slot="activate">Установить v10</button>
+      <span slot="unsupported">Используйте Chrome или Edge на компьютере.</span><span slot="not-allowed">Откройте страницу по HTTPS.</span></esp-web-install-button>
+  </div>
+
   <div class="board">
     <b>Waveshare ESP32-S3-Geek</b><div class="meta">USB-A plug · 1.14" ST7789 screen</div>
     <esp-web-install-button manifest="./manifest-geek.json"><button slot="activate">Install (Geek)</button>

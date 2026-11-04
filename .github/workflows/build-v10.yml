@@ -1,0 +1,58 @@
+name: Build Cyrillic firmware v10
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firmware/lilygo-cyrillic-v10/**'
+      - '.github/workflows/build-v10.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Compile LilyGo v10
+        run: platformio run -d firmware/lilygo-cyrillic-v10
+
+      - name: Collect flash binaries
+        run: |
+          set -e
+          BUILD=firmware/lilygo-cyrillic-v10/.pio/build/lilygo-t-dongle-s3-screen-v10
+          DEST=web/lilygo-v10
+          mkdir -p "$DEST"
+          cp "$BUILD/firmware.bin"   "$DEST/firmware.bin"
+          cp "$BUILD/bootloader.bin" "$DEST/bootloader.bin"
+          cp "$BUILD/partitions.bin" "$DEST/partitions.bin"
+          cp "$HOME/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin" "$DEST/boot_app0.bin"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lilygo-cyrillic-v10-binaries
+          path: web/lilygo-v10/*.bin
+
+      - name: Publish v10 binaries
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add web/lilygo-v10/*.bin
+          if git diff --cached --quiet; then
+            echo "v10 binaries unchanged"
+          else
+            git commit -m "ci: publish LilyGo Cyrillic v10 binaries [skip ci]"
+            git push
+          fi
+          git push origin HEAD:gh-pages --force
