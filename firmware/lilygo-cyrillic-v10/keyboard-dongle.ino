@@ -384,6 +384,12 @@ class SecCb : public BLESecurityCallbacks {
   void onPassKeyNotify(uint32_t pk) override { g_pairPin = pk; g_showPin = true; needRedraw = true; }
   bool onConfirmPIN(uint32_t pk) override { return true; }
   bool onSecurityRequest() override { return true; }
+  void onAuthenticationComplete(esp_ble_auth_cmpl_t result) override {
+    g_showPin = false;
+    needRedraw = true;
+    if (result.success) Serial.println("BLE pairing completed securely");
+    else Serial.printf("BLE pairing failed, reason=%u\n", result.fail_reason);
+  }
 };
 #endif
 
