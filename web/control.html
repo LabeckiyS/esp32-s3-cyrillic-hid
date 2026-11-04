@@ -15,23 +15,18 @@ button{font:inherit;font-weight:600;padding:11px 15px;border:0;border-radius:10p
 #status{font-size:.9rem;color:var(--muted)}#status.ok{color:#4ade80}textarea{display:block;width:100%;height:148px;resize:vertical;padding:12px;background:#090d16;color:var(--text);border:1px solid var(--line);border-radius:10px;font:16px/1.45 ui-monospace,monospace}
 label{display:flex;gap:7px;align-items:center;color:#cbd5e1;font-size:.9rem}#pad{height:210px;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;border:1px dashed #526079;border-radius:12px;background:#090d16;color:#748199;touch-action:none;user-select:none}
 #log{min-height:1.3em;margin-top:10px;color:var(--muted);font-size:.86rem}.safe{color:#4ade80;font-size:.8rem;margin-top:12px}input[type=range]{width:min(280px,60vw)}
-#pin{width:9em;padding:11px 13px;background:#090d16;color:var(--text);border:1px solid var(--line);border-radius:10px;font:700 18px/1 ui-monospace,monospace;letter-spacing:.16em}
 </style>
 </head>
 <body>
 <h1>Клавиатура <span style="color:#60a5fa">v11</span></h1>
-<p class="subtitle">Прямое соединение телефона с ESP32-S3 по Bluetooth с проверкой PIN</p>
+<p class="subtitle">Прямое соединение телефона с ESP32-S3 по Bluetooth</p>
 
 <section class="card">
   <div class="row">
     <button id="connect">Подключить устройство</button>
     <span id="status">Не подключено</span>
   </div>
-  <div class="row">
-    <input id="pin" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="PIN" disabled>
-    <button id="unlock" disabled>Разблокировать</button>
-  </div>
-  <p class="subtitle">После подключения введите 6 цифр с экрана донгла и нажмите «Разблокировать».</p>
+  <p class="subtitle">После подключения клавиатура и мышь доступны сразу.</p>
 </section>
 
 <section class="card">
@@ -83,24 +78,21 @@ label{display:flex;gap:7px;align-items:center;color:#cbd5e1;font-size:.9rem}#pad
 </section>
 
 <div id="log"></div>
-<p class="safe">Страница не отправляет текст на сервер: команды идут напрямую по BLE, а PIN проверяет сам донгл.</p>
+<p class="safe">Страница не отправляет текст на сервер: команды идут напрямую по BLE.</p>
 
 <script>
 const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const RX='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-const TX='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-let device=null,rx=null,tx=null,authorized=false;
+let device=null,rx=null;
 const $=id=>document.getElementById(id);
 const log=message=>$('log').textContent=message;
 function updateUi(){
   const linked=!!rx;
-  $('status').textContent=!linked?'Не подключено':authorized?'Разблокировано ✓':'Подключено — введите PIN';
-  $('status').classList.toggle('ok',linked&&authorized);
-  $('pin').disabled=!linked;
-  $('unlock').disabled=!linked;
-  $('send').disabled=!authorized;
-  document.querySelectorAll('.command,.mouse,.scroll,.hold').forEach(el=>el.disabled=!authorized);
-  $('pad').style.opacity=authorized?'1':'.4';
+  $('status').textContent=linked?'Подключено ✓':'Не подключено';
+  $('status').classList.toggle('ok',linked);
+  $('send').disabled=!linked;
+  document.querySelectorAll('.command,.mouse,.scroll,.hold').forEach(el=>el.disabled=!linked);
+  $('pad').style.opacity=linked?'1':'.4';
 }
 async function write(bytes,withoutResponse=false){
   if(!rx)throw new Error('Устройство не подключено');
@@ -111,34 +103,13 @@ async function connect(){
   if(!navigator.bluetooth){log('Нужен Chrome или Edge с поддержкой Web Bluetooth.');return;}
   try{
     device=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE]}]});
-    device.addEventListener('gattserverdisconnected',()=>{rx=null;tx=null;authorized=false;updateUi();log('Соединение разорвано.');});
+    device.addEventListener('gattserverdisconnected',()=>{rx=null;updateUi();log('Соединение разорвано.');});
     const server=await device.gatt.connect();
     const service=await server.getPrimaryService(SERVICE);
     rx=await service.getCharacteristic(RX);
-    tx=await service.getCharacteristic(TX);
-    await tx.startNotifications();
-    tx.addEventListener('characteristicvaluechanged',controlMessage);
-    authorized=false;updateUi();$('pin').focus();
-    log('Подключено к '+(device.name||'Клавиатура')+'. Введите PIN с экрана донгла.');
-  }catch(error){rx=null;tx=null;authorized=false;updateUi();log('Не удалось подключиться: '+error.message);}
-}
-function controlMessage(event){
-  const message=new TextDecoder().decode(event.target.value);
-  if(message==='AUTH_OK'){
-    authorized=true;updateUi();log('PIN принят. Клавиатура разблокирована ✓');
-  }else if(message==='AUTH_DENIED'){
-    authorized=false;updateUi();$('pin').select();log('Неверный PIN. Проверьте цифры на экране донгла.');
-  }else if(message==='LOCKED'){
-    authorized=false;updateUi();log('Донгл заблокирован — введите PIN с его экрана.');
-  }
-}
-async function unlock(){
-  const pin=$('pin').value.replace(/\D/g,'').slice(0,6);$('pin').value=pin;
-  if(pin.length!==6){log('Введите все 6 цифр PIN с экрана донгла.');return;}
-  try{
-    const digits=new TextEncoder().encode(pin),packet=new Uint8Array(1+digits.length);
-    packet[0]=4;packet.set(digits,1);await write(packet);log('Проверяю PIN…');
-  }catch(error){log('Ошибка проверки PIN: '+error.message);}
+    updateUi();
+    log('Подключено к '+(device.name||'Клавиатура')+'. Можно работать.');
+  }catch(error){rx=null;updateUi();log('Не удалось подключиться: '+error.message);}
 }
 async function command(name,quiet=false){
   try{await write(new TextEncoder().encode('\x01'+name));if(!quiet)log('Команда выполнена: '+name);}
@@ -149,9 +120,7 @@ async function sendText(){
   try{const bytes=new TextEncoder().encode(value);for(let i=0;i<bytes.length;i+=180)await write(bytes.slice(i,i+180));log('Текст отправлен ✓');}
   catch(error){log('Ошибка отправки: '+error.message);}
 }
-$('connect').addEventListener('click',connect);$('unlock').addEventListener('click',unlock);$('send').addEventListener('click',sendText);
-$('pin').addEventListener('input',()=>{$('pin').value=$('pin').value.replace(/\D/g,'').slice(0,6);});
-$('pin').addEventListener('keydown',event=>{if(event.key==='Enter')unlock();});
+$('connect').addEventListener('click',connect);$('send').addEventListener('click',sendText);
 document.querySelectorAll('.command').forEach(el=>el.addEventListener('click',()=>command(el.dataset.command)));
 document.querySelectorAll('.hold').forEach(el=>{
   let start=0,repeat=0,fired=false;
@@ -171,11 +140,11 @@ let sensitivity=parseFloat(localStorage.getItem('pointerSensitivity')||'1.6');
 $('sensitivity').value=sensitivity;$('sensitivityValue').textContent=sensitivity.toFixed(1)+'×';
 $('sensitivity').addEventListener('input',()=>{sensitivity=parseFloat($('sensitivity').value);$('sensitivityValue').textContent=sensitivity.toFixed(1)+'×';localStorage.setItem('pointerSensitivity',sensitivity);});
 const pad=$('pad');let down=false,lastX=0,lastY=0,accX=0,accY=0,moved=false,longClick=false,longTimer=0;
-pad.addEventListener('pointerdown',event=>{if(!authorized)return;down=true;lastX=event.clientX;lastY=event.clientY;accX=accY=0;moved=false;longClick=false;pad.setPointerCapture(event.pointerId);longTimer=setTimeout(()=>{if(down&&!moved){longClick=true;click(2);}},650);event.preventDefault();});
+pad.addEventListener('pointerdown',event=>{if(!rx)return;down=true;lastX=event.clientX;lastY=event.clientY;accX=accY=0;moved=false;longClick=false;pad.setPointerCapture(event.pointerId);longTimer=setTimeout(()=>{if(down&&!moved){longClick=true;click(2);}},650);event.preventDefault();});
 pad.addEventListener('pointermove',event=>{if(!down)return;accX+=event.clientX-lastX;accY+=event.clientY-lastY;lastX=event.clientX;lastY=event.clientY;if(Math.abs(accX)>3||Math.abs(accY)>3){moved=true;clearTimeout(longTimer);}});
 pad.addEventListener('pointerup',()=>{if(!down)return;down=false;clearTimeout(longTimer);if(!moved&&!longClick)click(1);});
 pad.addEventListener('pointercancel',()=>{down=false;clearTimeout(longTimer);});
-setInterval(()=>{if(!authorized||(!accX&&!accY))return;const dx=clamp(Math.round(accX*sensitivity)),dy=clamp(Math.round(accY*sensitivity));accX=accY=0;if(dx||dy)move(dx,dy);},40);
+setInterval(()=>{if(!rx||(!accX&&!accY))return;const dx=clamp(Math.round(accX*sensitivity)),dy=clamp(Math.round(accY*sensitivity));accX=accY=0;if(dx||dy)move(dx,dy);},40);
 updateUi();
 </script>
 </body>

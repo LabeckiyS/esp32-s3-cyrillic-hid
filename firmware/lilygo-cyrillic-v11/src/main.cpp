@@ -7,8 +7,6 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
-#include <BLE2902.h>
-#include <BLESecurity.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
 

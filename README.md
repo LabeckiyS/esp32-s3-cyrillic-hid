@@ -21,7 +21,7 @@
 - отображение состояния BLE/Wi-Fi и повторный запуск BLE-рекламы после отключения;
 - кнопка `Win/Cmd` отправляет `Win+Space` для смены раскладки Windows.
 - собственная русская BLE-панель в этом репозитории;
-- прикладная блокировка команд с шестизначным PIN на экране и явным полем ввода в веб-панели;
+- прямое подключение через Web Bluetooth без PIN и отдельной разблокировки;
 - надёжное подключение Android Chrome без проблемного системного диалога BLE-сопряжения v10;
 - Backspace/Delete с удержанием, копирование, вставка, вырезание и отмена;
 - контекстное меню (`Shift+F10`) и свойства (`Alt+Enter`);
@@ -63,7 +63,7 @@
 | Путь | Назначение |
 |---|---|
 | `firmware/lilygo-cyrillic-v11/` | Актуальная русская прошивка PlatformIO |
-| `firmware/lilygo-cyrillic-v11/keyboard-dongle.ino` | BLE/Wi-Fi, PIN, UTF-8 → ЙЦУКЕН, USB HID |
+| `firmware/lilygo-cyrillic-v11/keyboard-dongle.ino` | BLE/Wi-Fi, UTF-8 → ЙЦУКЕН, USB HID |
 | `firmware/lilygo-cyrillic-v11/boards/lilygo.h` | Экран, пины и ориентация LILYGO |
 | `firmware/lilygo-cyrillic-v11/boards/cyber_star_v8_splash.h` | Готовая заставка 80×160 в RGB565 |
 | `web/control.html` | Собственная русская панель Web Bluetooth |

@@ -1,6 +1,6 @@
 {
   "name": "LILYGO T-Dongle-S3 — Клавиатура v11",
-  "version": "11.0.0",
+  "version": "11.1.0",
   "new_install_prompt_erase": true,
   "builds": [
     {

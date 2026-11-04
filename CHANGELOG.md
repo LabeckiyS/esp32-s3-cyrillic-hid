@@ -53,6 +53,12 @@ The project was reorganized around **three ESP32-S3 boards**, sharing one firmwa
   real wired-USB keyboard. Three S3 boards were ordered, hence this multi-board layout.
 # Cyrillic fork
 
+## v11.1.0 — PIN removed (2026-11-04)
+
+- Removed the application PIN, locked state and unlock command.
+- The Web Bluetooth controls become available immediately after connecting.
+- Preserved the Android connection fix, Russian UTF-8 mapping, mouse controls and Wi-Fi fallback.
+
 ## v11.0.0 — firmware v11 (2026-11-04)
 
 - Replaced the unreliable Android system BLE passkey flow from v10 with an explicit

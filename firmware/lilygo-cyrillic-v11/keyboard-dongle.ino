@@ -23,10 +23,7 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
-#include <BLE2902.h>
-#include <BLESecurity.h>
 #include <esp_mac.h>
-#include <esp_random.h>
 
 // ===================== BOARD SELECT =====================
 #define BOARD_LILYGO_TDONGLE_S3 1
@@ -45,24 +42,15 @@
   #error "Unknown BOARD"
 #endif
 
-// Firmware v11: reliable BLE transport plus application-level on-screen PIN.
-// Android Web Bluetooth did not reliably complete passkey pairing in v10, so
-// commands are now rejected until the control page proves knowledge of this PIN.
-#define FW_VERSION "11.0.0"
-#define REQUIRE_BLE_PAIRING 0
-#if REQUIRE_BLE_PAIRING && !HAS_DISPLAY
-  #error "REQUIRE_BLE_PAIRING needs a display to show the PIN; this board has none."
-#endif
-
+// Firmware v11.1: reliable Android Web Bluetooth without pairing or a PIN gate.
+#define FW_VERSION "11.1.0"
 // RGB565 title colours (so shared code needs no display library)
 #define DC_CYAN    0x07FF
 #define DC_GREEN   0x07E0
-#define DC_MAGENTA 0xF81F
 
 // ---- Nordic UART Service UUIDs (match web/control.html) ----
 #define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 #define CHAR_RX_UUID "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHAR_TX_UUID "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 USBHIDKeyboard Keyboard;
 USBHIDMouse Mouse;
@@ -74,16 +62,11 @@ constexpr uint16_t HID_KEY_DOWN_MS = 8;
 constexpr uint16_t HID_KEY_GAP_MS = 8;
 WebServer server(80);
 BLEAdvertising *advertising = nullptr;
-BLECharacteristic *txChar = nullptr;
 
 String apSsid, apPass;
-volatile uint32_t g_pairPin = 0;
-volatile bool g_showPin = false;
 volatile bool needRedraw = false;
 int radioMode = 1;            // 0 = WiFi AP, 1 = BLE (BLE is the default)
 volatile bool bleConnected = false;
-volatile bool bleAuthorized = false;
-uint32_t controlPin = 0;
 volatile int wifiClients = 0;
 bool wifiApUp = false;
 volatile bool bleAdvOn = false;
@@ -311,19 +294,11 @@ void doMouse(const uint8_t *d, size_t n) {
 
 // shared screen content -> board renders it (boardRenderScreen lives in boards/<board>.h)
 void drawScreen() {
-  if (g_showPin) {
-    char pin[8]; snprintf(pin, sizeof(pin), "%06u", (unsigned)g_pairPin);
-    boardRenderScreen("PAIRING", DC_MAGENTA, "PIN:", String(pin), "");
-  } else if (radioMode == 0) {
+  if (radioMode == 0) {
     boardRenderScreen("WiFi MODE", DC_CYAN, "Keyboard", apPass, "192.168.4.1");
   } else {
-    if (!bleAuthorized) {
-      char pin[8]; snprintf(pin, sizeof(pin), "%06u", (unsigned)controlPin);
-      boardRenderScreen("BLE LOCKED", DC_MAGENTA, "PIN:", String(pin),
-                        bleConnected ? "enter in web" : "connect web");
-    } else {
-      boardRenderScreen("BLE MODE", DC_GREEN, "Keyboard", "unlocked", "v11 btn=WiFi");
-    }
+    boardRenderScreen("BLE MODE", DC_GREEN, "Keyboard",
+                      bleConnected ? "connected" : "waiting", "v11.1 btn=WiFi");
   }
 }
 
@@ -331,9 +306,7 @@ void genCreds() {
   // UTF-8 name used by both BLE advertising and the Wi-Fi access point.
   apSsid = "\xD0\x9A\xD0\xBB\xD0\xB0\xD0\xB2\xD0\xB8\xD0\xB0\xD1\x82\xD1\x83\xD1\x80\xD0\xB0";
   apPass = "12345678";
-  controlPin = 100000 + (esp_random() % 900000);
   Serial.printf("[%s v%s] WiFi: %s / %s  ->  http://192.168.4.1\n", BOARD_NAME, FW_VERSION, apSsid.c_str(), apPass.c_str());
-  Serial.printf("BLE control PIN: %06u\n", (unsigned)controlPin);
 }
 
 void startAP() {
@@ -358,7 +331,6 @@ class SrvCb : public BLEServerCallbacks {
   void onConnect(BLEServer *s) override {
     (void)s;
     bleConnected = true;
-    bleAuthorized = false;
     bleAdvOn = false;  // BLE advertising stops after a connection is made.
     needRedraw = true;
   }
@@ -366,7 +338,6 @@ class SrvCb : public BLEServerCallbacks {
   void onDisconnect(BLEServer *s) override {
     (void)s;
     bleConnected = false;
-    bleAuthorized = false;
     bleAdvOn = false;
 
     // Make the keyboard discoverable again without rebooting the dongle.
@@ -379,38 +350,10 @@ class SrvCb : public BLEServerCallbacks {
   }
 };
 
-void notifyControl(const char *message) {
-  if (txChar == nullptr || !bleConnected) return;
-  txChar->setValue((uint8_t *)message, strlen(message));
-  txChar->notify();
-}
-
 class RxCb : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
-    if (g_showPin) { g_showPin = false; needRedraw = true; }
     std::string raw = c->getValue();
     if (raw.empty()) return;
-
-    // 0x04 + six decimal digits authenticates this BLE connection.
-    if ((uint8_t)raw[0] == 0x04) {
-      String supplied(raw.c_str() + 1);
-      supplied.trim();
-      char expected[8]; snprintf(expected, sizeof(expected), "%06u", (unsigned)controlPin);
-      if (supplied.length() == 6 && supplied == expected) {
-        bleAuthorized = true;
-        notifyControl("AUTH_OK");
-        needRedraw = true;
-      } else {
-        bleAuthorized = false;
-        notifyControl("AUTH_DENIED");
-      }
-      return;
-    }
-
-    if (!bleAuthorized) {
-      notifyControl("LOCKED");
-      return;
-    }
 
     if ((uint8_t)raw[0] == 0x01) {
       doKey(String(raw.c_str() + 1));
@@ -421,20 +364,6 @@ class RxCb : public BLECharacteristicCallbacks {
     }
   }
 };
-#if REQUIRE_BLE_PAIRING
-class SecCb : public BLESecurityCallbacks {
-  uint32_t onPassKeyRequest() override { return 0; }
-  void onPassKeyNotify(uint32_t pk) override { g_pairPin = pk; g_showPin = true; needRedraw = true; }
-  bool onConfirmPIN(uint32_t pk) override { return true; }
-  bool onSecurityRequest() override { return true; }
-  void onAuthenticationComplete(esp_ble_auth_cmpl_t result) override {
-    g_showPin = false;
-    needRedraw = true;
-    if (result.success) Serial.println("BLE pairing completed securely");
-    else Serial.printf("BLE pairing failed, reason=%u\n", result.fail_reason);
-  }
-};
-#endif
 
 void applyRadio() {
   if (radioMode == 0) { stopAdv(); if (!wifiApUp) startAP(); }
@@ -472,26 +401,12 @@ void setup() {
   BLEService *svc = srv->createService(SERVICE_UUID);
   BLECharacteristic *rx = svc->createCharacteristic(
       CHAR_RX_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
-#if REQUIRE_BLE_PAIRING
-  rx->setAccessPermissions(ESP_GATT_PERM_WRITE_ENC_MITM);
-#endif
   rx->setCallbacks(new RxCb());
-  txChar = svc->createCharacteristic(CHAR_TX_UUID, BLECharacteristic::PROPERTY_NOTIFY);
-  txChar->addDescriptor(new BLE2902());
   svc->start();
 
   advertising = BLEDevice::getAdvertising();
   advertising->addServiceUUID(SERVICE_UUID);
   advertising->setScanResponse(true);
-
-#if REQUIRE_BLE_PAIRING
-  BLEDevice::setSecurityCallbacks(new SecCb());
-  BLESecurity *sec = new BLESecurity();
-  sec->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
-  sec->setCapability(ESP_IO_CAP_OUT);
-  sec->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-  sec->setRespEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-#endif
 
   server.on("/", []() { server.send_P(200, "text/html", INDEX_HTML); });
   server.on("/type", HTTP_POST, []() {
