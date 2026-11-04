@@ -8,7 +8,7 @@
 
 Главное отличие этой версии — корректная обработка русского UTF-8 и преобразование кириллицы в физические клавиши раскладки **ЙЦУКЕН**.
 
-### Возможности v1.0.0 / firmware v9
+### Возможности firmware v10
 
 - русский UTF-8: строчные и заглавные буквы, `ё` и основные знаки препинания;
 - стабильная печать без потери символов: отдельные HID-нажатия и отпускания по 8 мс;
@@ -20,6 +20,11 @@
 - полноэкранная заставка «КИБЕР РФ» в течение 4 секунд;
 - отображение состояния BLE/Wi-Fi и повторный запуск BLE-рекламы после отключения;
 - кнопка `Win/Cmd` отправляет `Win+Space` для смены раскладки Windows.
+- собственная русская BLE-панель в этом репозитории;
+- защищённое BLE-сопряжение с PIN на экране;
+- Backspace/Delete с удержанием, копирование, вставка, вырезание и отмена;
+- контекстное меню (`Shift+F10`) и свойства (`Alt+Enter`);
+- правый клик отдельной кнопкой и удержанием на сенсорной площадке.
 
 > [!IMPORTANT]
 > Целевой компьютер сам определяет активную раскладку. Перед русским текстом включите `RUS`, перед английским — `ENG`. Кнопка `Win/Cmd` в панели отправляет `Win+Space`.
@@ -37,25 +42,26 @@
 ### Сборка в VS Code + PlatformIO
 
 1. Скачайте репозиторий.
-2. Откройте папку `firmware/lilygo-cyrillic-v9` в VS Code.
+2. Откройте папку `firmware/lilygo-cyrillic-v10` в VS Code.
 3. Установите расширение PlatformIO.
 4. Нажмите **Build** (галочка).
 5. Отключите донгл, зажмите боковую кнопку, вставьте его в USB и отпустите через 2–3 секунды.
 6. Нажмите **Upload** (стрелка вправо).
 7. После `SUCCESS` переподключите донгл без удержания кнопки.
 
-Панель управления BLE исходного проекта:
+Собственная панель управления BLE:
 
-<https://kolec94.github.io/esp32-s3-hid-dongle/web/control.html>
+<https://labeckiys.github.io/esp32-s3-cyrillic-hid/>
 
 ### Структура
 
 | Путь | Назначение |
 |---|---|
-| `firmware/lilygo-cyrillic-v9/` | Проверенная русская прошивка PlatformIO |
-| `firmware/lilygo-cyrillic-v9/keyboard-dongle.ino` | BLE/Wi-Fi, UTF-8 → ЙЦУКЕН, USB HID |
-| `firmware/lilygo-cyrillic-v9/boards/lilygo.h` | Экран, пины и ориентация LILYGO |
-| `firmware/lilygo-cyrillic-v9/boards/cyber_star_v8_splash.h` | Готовая заставка 80×160 в RGB565 |
+| `firmware/lilygo-cyrillic-v10/` | Актуальная русская прошивка PlatformIO |
+| `firmware/lilygo-cyrillic-v10/keyboard-dongle.ino` | BLE/Wi-Fi, UTF-8 → ЙЦУКЕН, USB HID |
+| `firmware/lilygo-cyrillic-v10/boards/lilygo.h` | Экран, пины и ориентация LILYGO |
+| `firmware/lilygo-cyrillic-v10/boards/cyber_star_v8_splash.h` | Готовая заставка 80×160 в RGB565 |
+| `web/control.html` | Собственная русская панель Web Bluetooth |
 | `firmware/keyboard-dongle/` | Исходная многоплатная версия upstream |
 
 ### Происхождение проекта
@@ -72,6 +78,6 @@ This fork turns a **LILYGO T-Dongle-S3 V1.1** into a USB HID keyboard and mouse 
 
 The firmware was hardware-tested with a Samsung Galaxy S25 Ultra, Chrome, Windows, the onboard ST7735 80×160 display, and the LILYGO T-Dongle-S3 V1.1.
 
-Open `firmware/lilygo-cyrillic-v9` in VS Code with PlatformIO to build and upload it. The target computer must already have the matching Russian or English keyboard layout selected.
+Open `firmware/lilygo-cyrillic-v10` in VS Code with PlatformIO to build and upload it. The target computer must already have the matching Russian or English keyboard layout selected.
 
 Use this device only on computers you own or are explicitly authorized to control.

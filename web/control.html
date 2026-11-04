@@ -1,136 +1,150 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>T-Dongle S3 Keyboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Клавиатура v10</title>
 <style>
-  body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px;background:#111;color:#eee}
-  h1{font-size:1.3rem} h2{font-size:1rem;color:#9ca3af;margin-top:28px}
-  textarea{width:100%;height:150px;font-size:16px;padding:10px;box-sizing:border-box;
-           background:#1c1c1c;color:#eee;border:1px solid #444;border-radius:8px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
-  button{font-size:15px;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;background:#3b82f6;color:#fff}
-  button.alt{background:#374151} button:disabled{opacity:.4;cursor:not-allowed}
-  label{display:flex;align-items:center;gap:6px;font-size:14px}
-  #log{margin-top:12px;font-size:13px;color:#9ca3af}
-  hr{border:0;border-top:1px solid #333;margin:28px 0}
-  .hint{font-size:13px;color:#9ca3af}
-  a{color:#60a5fa}
-  #pad{touch-action:none;height:190px;margin-top:10px;background:#1c1c1c;border:1px dashed #555;
-       border-radius:10px;display:flex;align-items:center;justify-content:center;color:#666;
-       user-select:none;font-size:14px;text-align:center}
+:root{color-scheme:dark;--bg:#080b12;--card:#121827;--line:#293247;--text:#f3f4f6;--muted:#94a3b8;--blue:#2563eb;--key:#273248;--danger:#9f1239}
+*{box-sizing:border-box}body{font-family:system-ui,sans-serif;max-width:760px;margin:0 auto;padding:20px 14px 40px;background:radial-gradient(circle at top,#16213a 0,var(--bg) 42%);color:var(--text)}
+h1{margin:0;font-size:1.45rem}.subtitle{color:var(--muted);font-size:.9rem;margin:6px 0 18px}.card{background:rgba(18,24,39,.94);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 10px 30px #0005}
+h2{font-size:1rem;margin:0 0 10px;color:#cbd5e1}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}
+button{font:inherit;font-weight:600;padding:11px 15px;border:0;border-radius:10px;background:var(--blue);color:white;touch-action:manipulation}button.key{background:var(--key);border:1px solid #39455d}button.danger{background:var(--danger)}button:disabled{opacity:.38}
+#status{font-size:.9rem;color:var(--muted)}#status.ok{color:#4ade80}textarea{display:block;width:100%;height:148px;resize:vertical;padding:12px;background:#090d16;color:var(--text);border:1px solid var(--line);border-radius:10px;font:16px/1.45 ui-monospace,monospace}
+label{display:flex;gap:7px;align-items:center;color:#cbd5e1;font-size:.9rem}#pad{height:210px;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;border:1px dashed #526079;border-radius:12px;background:#090d16;color:#748199;touch-action:none;user-select:none}
+#log{min-height:1.3em;margin-top:10px;color:var(--muted);font-size:.86rem}.safe{color:#4ade80;font-size:.8rem;margin-top:12px}input[type=range]{width:min(280px,60vw)}
 </style>
 </head>
 <body>
-  <h1>T-Dongle S3 — Remote Keyboard</h1>
-  <p class="hint">Plug the flashed dongle into the <em>target</em> computer, then connect over BLE (Win/Mac, Chrome/Edge). Need to flash a dongle first? <a href="./index.html">Go to the install page →</a></p>
+<h1>Клавиатура <span style="color:#60a5fa">v10</span></h1>
+<p class="subtitle">Прямое защищённое соединение телефона с ESP32-S3 по Bluetooth</p>
 
+<section class="card">
   <div class="row">
-    <button id="conn" onclick="connect()">Connect to dongle</button>
-    <span id="status">disconnected</span>
+    <button id="connect">Подключить устройство</button>
+    <span id="status">Не подключено</span>
   </div>
-  <textarea id="txt" placeholder="Type text to send to the target computer..."></textarea>
+  <p class="subtitle">При первом подключении введите PIN, показанный на экране донгла.</p>
+</section>
+
+<section class="card">
+  <h2>Текст</h2>
+  <textarea id="text" placeholder="Введите или вставьте текст…"></textarea>
   <div class="row">
-    <button id="send" onclick="send()" disabled>Send</button>
-    <label><input type="checkbox" id="enter" checked> Press Enter after</label>
+    <button id="send" disabled>Отправить</button>
+    <label><input type="checkbox" id="enter" checked> нажать Enter после текста</label>
   </div>
+</section>
+
+<section class="card">
+  <h2>Клавиши</h2>
   <div class="row">
-    <button class="alt keybtn" onclick="cmd('ENTER')" disabled>Enter</button>
-    <button class="alt keybtn" onclick="cmd('TAB')" disabled>Tab</button>
-    <button class="alt keybtn" onclick="cmd('ESC')" disabled>Esc</button>
-    <button class="alt keybtn" onclick="cmd('WIN')" disabled>Win/Cmd</button>
-    <button class="alt keybtn" onclick="cmd('CTRL_ALT_DEL')" disabled>Ctrl+Alt+Del</button>
-  </div>
-  <h2>Mouse</h2>
-  <div id="pad">drag here to move the pointer • tap to left-click</div>
-  <div class="row">
-    <label>Sensitivity <input type="range" id="sens" min="0.3" max="5" step="0.1" value="1.6" style="vertical-align:middle">
-      <span id="sensv">1.6</span>×</label>
-  </div>
-  <div class="row">
-    <button class="alt mousebtn" onclick="mclick(1)" disabled>Left click</button>
-    <button class="alt mousebtn" onclick="mclick(2)" disabled>Right click</button>
-    <button class="alt mousebtn" onclick="mclick(4)" disabled>Middle</button>
-    <button class="alt mousebtn" onclick="mscroll(-3)" disabled>Scroll ↑</button>
-    <button class="alt mousebtn" onclick="mscroll(3)" disabled>Scroll ↓</button>
+    <button class="key command" data-command="ENTER" disabled>Enter</button>
+    <button class="key command" data-command="TAB" disabled>Tab</button>
+    <button class="key command" data-command="ESC" disabled>Esc</button>
+    <button class="key hold" data-command="BACKSPACE" disabled>⌫ Backspace</button>
+    <button class="key hold" data-command="DELETE" disabled>Delete</button>
   </div>
   <div class="row">
-    <label style="flex:1">Pointer speed
-      <input type="range" id="sens" min="0.3" max="5" step="0.1" value="1.6" style="flex:1;min-width:120px">
-      <span id="sensv" style="min-width:2.5em;text-align:right">1.6</span>
-    </label>
+    <button class="key command" data-command="COPY" disabled>Копировать</button>
+    <button class="key command" data-command="PASTE" disabled>Вставить</button>
+    <button class="key command" data-command="CUT" disabled>Вырезать</button>
+    <button class="key command" data-command="SELECT_ALL" disabled>Выделить всё</button>
+    <button class="key command" data-command="UNDO" disabled>Отменить</button>
   </div>
-  <div id="log"></div>
+  <div class="row">
+    <button class="key command" data-command="CONTEXT_MENU" disabled>Контекстное меню</button>
+    <button class="key command" data-command="PROPERTIES" disabled>Свойства</button>
+    <button class="key command" data-command="WIN" disabled>Сменить язык</button>
+    <button class="danger command" data-command="CTRL_ALT_DEL" disabled>Ctrl+Alt+Del</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Мышь</h2>
+  <div id="pad">Ведите пальцем — движение<br>Касание — левый клик<br>Удержание — правый клик</div>
+  <div class="row">
+    <label>Чувствительность <input type="range" id="sensitivity" min="0.3" max="5" step="0.1" value="1.6"><span id="sensitivityValue">1.6×</span></label>
+  </div>
+  <div class="row">
+    <button class="key mouse" data-button="1" disabled>Левая</button>
+    <button class="key mouse" data-button="2" disabled>Правая</button>
+    <button class="key mouse" data-button="4" disabled>Средняя</button>
+    <button class="key scroll" data-scroll="-3" disabled>Прокрутка ↑</button>
+    <button class="key scroll" data-scroll="3" disabled>Прокрутка ↓</button>
+  </div>
+</section>
+
+<div id="log"></div>
+<p class="safe">Страница не отправляет текст на сервер: команды идут напрямую в выбранный донгл по BLE.</p>
 
 <script>
 const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const RX='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-let rxChar=null;
-function setConnected(on){
-  document.getElementById('status').textContent = on?'connected ✓':'disconnected';
-  document.getElementById('send').disabled=!on;
-  document.querySelectorAll('.keybtn,.mousebtn').forEach(b=>b.disabled=!on);
-  document.getElementById('pad').style.opacity = on ? '1' : '0.4';
+let device=null,rx=null;
+const $=id=>document.getElementById(id);
+const log=message=>$('log').textContent=message;
+function connected(on){
+  $('status').textContent=on?'Подключено ✓':'Не подключено';
+  $('status').classList.toggle('ok',on);
+  document.querySelectorAll('button:not(#connect)').forEach(el=>el.disabled=!on);
+  $('pad').style.opacity=on?'1':'.4';
 }
-function log(m){ document.getElementById('log').textContent=m; }
+async function write(bytes,withoutResponse=false){
+  if(!rx)throw new Error('Устройство не подключено');
+  if(withoutResponse&&rx.writeValueWithoutResponse)await rx.writeValueWithoutResponse(bytes);
+  else await rx.writeValue(bytes);
+}
 async function connect(){
-  if(!navigator.bluetooth){ log('Web Bluetooth not supported — use Chrome/Edge.'); return; }
+  if(!navigator.bluetooth){log('Нужен Chrome или Edge с поддержкой Web Bluetooth.');return;}
   try{
-    const dev=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE]}]});
-    dev.addEventListener('gattserverdisconnected',()=>{setConnected(false);rxChar=null;});
-    const server=await dev.gatt.connect();
-    const svc=await server.getPrimaryService(SERVICE);
-    rxChar=await svc.getCharacteristic(RX);
-    setConnected(true); log('connected to '+(dev.name||'device'));
-  }catch(e){ log('connect failed: '+e.message); }
+    device=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE]}]});
+    device.addEventListener('gattserverdisconnected',()=>{rx=null;connected(false);log('Соединение разорвано.');});
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService(SERVICE);
+    rx=await service.getCharacteristic(RX);
+    log('Подтвердите сопряжение и введите PIN с экрана донгла…');
+    await write(new TextEncoder().encode('\x01PAIR'));
+    connected(true);log('Подключено к '+(device.name||'Клавиатура')+' ✓');
+  }catch(error){rx=null;connected(false);log('Не удалось подключиться: '+error.message);}
 }
-async function writeChunked(bytes){
-  for(let i=0;i<bytes.length;i+=180){ await rxChar.writeValue(bytes.slice(i,i+180)); }
+async function command(name,quiet=false){
+  try{await write(new TextEncoder().encode('\x01'+name));if(!quiet)log('Команда выполнена: '+name);}
+  catch(error){log('Ошибка отправки: '+error.message);}
 }
-async function send(){
-  if(!rxChar) return;
-  let t=document.getElementById('txt').value;
-  if(document.getElementById('enter').checked) t+='\n';
-  try{ await writeChunked(new TextEncoder().encode(t)); log('sent ✓'); }
-  catch(e){ log('send failed: '+e.message); }
+async function sendText(){
+  let value=$('text').value;if($('enter').checked)value+='\n';
+  try{const bytes=new TextEncoder().encode(value);for(let i=0;i<bytes.length;i+=180)await write(bytes.slice(i,i+180));log('Текст отправлен ✓');}
+  catch(error){log('Ошибка отправки: '+error.message);}
 }
-async function cmd(name){
-  if(!rxChar) return;
-  try{ await rxChar.writeValue(new TextEncoder().encode('\x01'+name)); log('sent '+name); }
-  catch(e){ log('send failed: '+e.message); }
-}
-
-// ---- mouse ----
-let SENS = parseFloat(localStorage.getItem('sens') || '1.6');   // pointer sensitivity (slider)
-function clamp(v){ v=v|0; return v<-127?-127:v>127?127:v; }
-async function mwrite(arr){
-  if(!rxChar) return;
-  const b=new Uint8Array(arr);
-  try{
-    if(rxChar.writeValueWithoutResponse) await rxChar.writeValueWithoutResponse(b);
-    else await rxChar.writeValue(b);
-  }catch(e){}
-}
-function mmove(dx,dy){ mwrite([2,0x6d,(clamp(dx)+128)&0xff,(clamp(dy)+128)&0xff]); }     // 'm'
-function mclick(btn){ mwrite([2,0x63,btn]); log('mouse click'); }                          // 'c'
-function mscroll(a){ mwrite([2,0x73,(clamp(a)+128)&0xff]); }                               // 's'
-
-const sens=document.getElementById('sens'), sensv=document.getElementById('sensv');
-sens.value=SENS; sensv.textContent=SENS.toFixed(1);
-sens.addEventListener('input',()=>{ SENS=parseFloat(sens.value); sensv.textContent=SENS.toFixed(1); localStorage.setItem('sens',sens.value); });
-
-const pad=document.getElementById('pad');
-let pDown=false,lx=0,ly=0,ax=0,ay=0,moved=false;
-pad.addEventListener('pointerdown',e=>{ if(!rxChar)return; pDown=true;lx=e.clientX;ly=e.clientY;moved=false;
-  ax=ay=0; pad.setPointerCapture(e.pointerId); e.preventDefault(); });
-pad.addEventListener('pointermove',e=>{ if(!pDown)return;
-  ax+=e.clientX-lx; ay+=e.clientY-ly; lx=e.clientX; ly=e.clientY;
-  if(Math.abs(ax)>3||Math.abs(ay)>3) moved=true; });
-pad.addEventListener('pointerup',e=>{ if(!pDown)return; pDown=false; if(!moved) mclick(1); });
-setInterval(()=>{ if(!rxChar||(!ax&&!ay))return;
-  const dx=clamp(Math.round(ax*SENS)), dy=clamp(Math.round(ay*SENS));
-  ax=0; ay=0; if(dx||dy) mmove(dx,dy); }, 40);
+$('connect').addEventListener('click',connect);$('send').addEventListener('click',sendText);
+document.querySelectorAll('.command').forEach(el=>el.addEventListener('click',()=>command(el.dataset.command)));
+document.querySelectorAll('.hold').forEach(el=>{
+  let start=0,repeat=0,fired=false;
+  const cancel=()=>{clearTimeout(start);clearInterval(repeat);};
+  el.addEventListener('pointerdown',event=>{event.preventDefault();fired=false;el.setPointerCapture(event.pointerId);start=setTimeout(()=>{fired=true;command(el.dataset.command,true);repeat=setInterval(()=>command(el.dataset.command,true),90);},350);});
+  el.addEventListener('pointerup',()=>{cancel();if(!fired)command(el.dataset.command);fired=false;});
+  el.addEventListener('pointercancel',()=>{cancel();fired=false;});
+});
+function clamp(value){value=value|0;return value<-127?-127:value>127?127:value;}
+async function mouseWrite(values){try{await write(new Uint8Array(values),true);}catch(error){log('Ошибка мыши: '+error.message);}}
+function move(dx,dy){mouseWrite([2,0x6d,(clamp(dx)+128)&255,(clamp(dy)+128)&255]);}
+function click(button){mouseWrite([2,0x63,button]);}
+function scroll(amount){mouseWrite([2,0x73,(clamp(amount)+128)&255]);}
+document.querySelectorAll('.mouse').forEach(el=>el.addEventListener('click',()=>click(Number(el.dataset.button))));
+document.querySelectorAll('.scroll').forEach(el=>el.addEventListener('click',()=>scroll(Number(el.dataset.scroll))));
+let sensitivity=parseFloat(localStorage.getItem('pointerSensitivity')||'1.6');
+$('sensitivity').value=sensitivity;$('sensitivityValue').textContent=sensitivity.toFixed(1)+'×';
+$('sensitivity').addEventListener('input',()=>{sensitivity=parseFloat($('sensitivity').value);$('sensitivityValue').textContent=sensitivity.toFixed(1)+'×';localStorage.setItem('pointerSensitivity',sensitivity);});
+const pad=$('pad');let down=false,lastX=0,lastY=0,accX=0,accY=0,moved=false,longClick=false,longTimer=0;
+pad.addEventListener('pointerdown',event=>{if(!rx)return;down=true;lastX=event.clientX;lastY=event.clientY;accX=accY=0;moved=false;longClick=false;pad.setPointerCapture(event.pointerId);longTimer=setTimeout(()=>{if(down&&!moved){longClick=true;click(2);}},650);event.preventDefault();});
+pad.addEventListener('pointermove',event=>{if(!down)return;accX+=event.clientX-lastX;accY+=event.clientY-lastY;lastX=event.clientX;lastY=event.clientY;if(Math.abs(accX)>3||Math.abs(accY)>3){moved=true;clearTimeout(longTimer);}});
+pad.addEventListener('pointerup',()=>{if(!down)return;down=false;clearTimeout(longTimer);if(!moved&&!longClick)click(1);});
+pad.addEventListener('pointercancel',()=>{down=false;clearTimeout(longTimer);});
+setInterval(()=>{if(!rx||(!accX&&!accY))return;const dx=clamp(Math.round(accX*sensitivity)),dy=clamp(Math.round(accY*sensitivity));accX=accY=0;if(dx||dy)move(dx,dy);},40);
+connected(false);
 </script>
 </body>
 </html>

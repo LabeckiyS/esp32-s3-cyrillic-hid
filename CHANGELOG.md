@@ -53,6 +53,17 @@ The project was reorganized around **three ESP32-S3 boards**, sharing one firmwa
   real wired-USB keyboard. Three S3 boards were ordered, hence this multi-board layout.
 # Cyrillic fork
 
+## v10.0.0 — firmware v10 (2026-11-04)
+
+- Added the repository's own Russian Web Bluetooth control page.
+- Enabled encrypted BLE pairing with a PIN displayed on the dongle screen.
+- Added Backspace, Delete, Copy, Paste, Cut, Select All and Undo commands.
+- Added Windows context menu (`Shift+F10`) and Properties (`Alt+Enter`).
+- Added hold-to-repeat for Backspace/Delete.
+- Added right-click by long-pressing the mouse pad.
+- Added a strict Content Security Policy and removed all external page dependencies.
+- Preserved the proven Russian UTF-8 mapping, 8 ms HID timing and 4-second splash.
+
 ## v1.0.0 — firmware v9 (2026-10-24)
 
 - Added Russian UTF-8 to physical Windows ЙЦУКЕН mapping.
@@ -64,4 +75,3 @@ The project was reorganized around **three ESP32-S3 boards**, sharing one firmwa
 - Made the Web UI Win/Cmd action send `Win+Space`.
 
 ---
-
